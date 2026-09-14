@@ -1,0 +1,28 @@
+/*
+ * The foundation is mobile-first from 320px upward.
+ * Scene and component breakpoints will be added only when their layouts require them.
+ */
+
+@media (min-width: 48rem) {
+  .experience-stage {
+    inline-size: min(100%, 90rem);
+  }
+
+  .heart-target {
+    inset: 18% 18% auto auto;
+  }
+
+  .bow-rig {
+    inset: auto auto 10% 20%;
+  }
+}
+
+@media (min-width: 75rem) {
+  .heart-target {
+    inset-inline-end: 24%;
+  }
+
+  .bow-rig {
+    inset-inline-start: 24%;
+  }
+}

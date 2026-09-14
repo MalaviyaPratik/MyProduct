@@ -1,0 +1,29 @@
+/* Foundation utilities for future motion states; no product animations belong here yet. */
+.motion-safe {
+  transition-timing-function: var(--ease-standard);
+}
+
+.scene--entering,
+.scene--exiting {
+  will-change: opacity, transform;
+}
+
+.heart-target--impact {
+  animation: target-impact var(--duration-fast) var(--ease-emphasized);
+}
+
+@keyframes target-impact {
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-safe {
+    transition-timing-function: linear;
+  }
+
+  .heart-target--impact {
+    animation: none;
+  }
+}

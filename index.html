@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta
+      name="description"
+      content="Foundation for a premium interactive romantic web experience."
+    >
+    <title>Romantic Experience | Development</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=Cormorant+Garamond:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    >
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB"
+      crossorigin="anonymous"
+    >
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/responsive.css">
+  </head>
+  <body>
+    <main id="experience" class="experience" aria-label="Recipient experience">
+      <div class="experience-stage">
+        <section
+          class="scene scene--active scene--bow-arrow"
+          data-scene="scene-01"
+          aria-label="Bow and arrow scene"
+          aria-hidden="false"
+          tabindex="-1"
+        >
+          <div class="scene-atmosphere" aria-hidden="true">
+            <span class="atmosphere-particle atmosphere-particle--one"></span>
+            <span class="atmosphere-particle atmosphere-particle--two"></span>
+            <span class="atmosphere-particle atmosphere-particle--three"></span>
+          </div>
+
+          <p id="bow-arrow-instruction" class="bow-arrow-instruction accent-text">
+            Pull back the arrow
+          </p>
+          <p class="bow-arrow-feedback" data-bow-arrow-feedback aria-live="polite"></p>
+
+          <div class="heart-target" data-heart-target aria-label="Heart target">
+            <img src="assets/illustrations/heart-target.svg" alt="">
+          </div>
+
+          <div class="bow-rig" data-bow-rig>
+            <img class="bow-illustration" src="assets/illustrations/bow.svg" alt="" aria-hidden="true">
+            <svg class="bow-string" viewBox="0 0 100 240" aria-hidden="true">
+              <line data-string-upper x1="50" y1="12" x2="50" y2="120"></line>
+              <line data-string-lower x1="50" y1="228" x2="50" y2="120"></line>
+            </svg>
+            <button
+              class="arrow-control"
+              type="button"
+              data-arrow-control
+              data-arrow-nock="0.06"
+              data-arrow-tip="0.98"
+              aria-label="Pull back and release the arrow"
+              aria-describedby="bow-arrow-instruction"
+            >
+              <img src="assets/illustrations/arrow.svg" alt="">
+            </button>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
