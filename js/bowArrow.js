@@ -9,7 +9,6 @@ const INTERACTION_STATES = Object.freeze({
 
 const MAX_PULL_DISTANCE = 150;
 const MIN_LAUNCH_STRENGTH = 0.12;
-const GRAVITY = 280;
 
 export function initBowArrow(scene) {
   if (!scene) {
@@ -29,8 +28,14 @@ function createBowArrowController(scene) {
   const feedback = scene.querySelector("[data-bow-arrow-feedback]");
   const upperString = scene.querySelector("[data-string-upper]");
   const lowerString = scene.querySelector("[data-string-lower]");
+
+  if (!arrow || !bowRig || !target || !feedback || !upperString || !lowerString) {
+    return null;
+  }
+
   const nockRatio = Number(arrow.dataset.arrowNock) || 0.06;
   const tipRatio = Number(arrow.dataset.arrowTip) || 0.98;
+
   let state = INTERACTION_STATES.IDLE;
   let pull = { x: 0, y: 0, strength: 0 };
   let aim = { x: 1, y: 0, angle: 0 };
@@ -47,21 +52,51 @@ function createBowArrowController(scene) {
     };
   }
 
+  /*
+   * The bow is now a horizontal SVG.
+   * Its actual string/nock center is the visual center of the bow.
+   */
   function getBowOrigin() {
     return {
       x: bowRig.offsetLeft + bowRig.offsetWidth * 0.5,
-      y: bowRig.offsetTop + bowRig.offsetHeight * 0.47,
+      y: bowRig.offsetTop + bowRig.offsetHeight * 0.5,
     };
   }
 
-  function getTargetPoint() {
+  /*
+   * Only the central heart body counts as the target.
+   * The decorative wings are intentionally excluded.
+   */
+  function getHeartHitRegion() {
     const targetBounds = target.getBoundingClientRect();
     const sceneBounds = scene.getBoundingClientRect();
 
+    const width = targetBounds.width;
+    const height = targetBounds.height;
+
+    const centerX =
+      targetBounds.left -
+      sceneBounds.left +
+      width * 0.5;
+
+    const centerY =
+      targetBounds.top -
+      sceneBounds.top +
+      height * 0.55;
+
+    /*
+     * Central heart body only.
+     * These proportions deliberately ignore the wings.
+     */
+    const radiusX = width * 0.20;
+    const radiusY = height * 0.38;
+
     return {
-      x: targetBounds.left - sceneBounds.left + targetBounds.width * 0.5,
-      y: targetBounds.top - sceneBounds.top + targetBounds.height * 0.53,
-      size: Math.min(targetBounds.width, targetBounds.height),
+      centerX,
+      centerY,
+      radiusX,
+      radiusY,
+      size: Math.min(width, height),
     };
   }
 
@@ -81,53 +116,124 @@ function createBowArrowController(scene) {
   function setState(nextState) {
     state = nextState;
     scene.dataset.state = nextState;
-    arrow.disabled = nextState !== INTERACTION_STATES.IDLE && nextState !== INTERACTION_STATES.DRAGGING;
+
+    arrow.disabled =
+      nextState !== INTERACTION_STATES.IDLE &&
+      nextState !== INTERACTION_STATES.DRAGGING;
   }
 
+  /*
+   * String center always follows the actual arrow nock.
+   * No artificial 0.18 multiplier anymore.
+   */
   function updateString() {
-    const stringX = 50 + (pull.x / MAX_PULL_DISTANCE) * 34;
-    const stringY = 120 + (pull.y / MAX_PULL_DISTANCE) * 34;
+    const centerX = 148 + pull.x;
+    const centerY = 37.69 + pull.y;
 
-    upperString.setAttribute("x2", String(stringX));
-    upperString.setAttribute("y2", String(stringY));
-    lowerString.setAttribute("x2", String(stringX));
-    lowerString.setAttribute("y2", String(stringY));
+    upperString.setAttribute("x2", String(centerX));
+    upperString.setAttribute("y2", String(centerY));
+
+    lowerString.setAttribute("x2", String(centerX));
+    lowerString.setAttribute("y2", String(centerY));
+  }
+
+  function updateArrowNockPosition() {
+    /*
+     * The arrow element's left edge is positioned around the bow center.
+     * Shift it left by its own nock offset so the actual nock sits exactly
+     * on the bow/string center.
+     */
+    const nockOffset = arrow.offsetWidth * nockRatio;
+
+    arrow.style.setProperty(
+      "--arrow-nock-shift",
+      `${-nockOffset}px`,
+    );
   }
 
   function updateVisuals(nockOffset = pull, direction = aim) {
-    scene.style.setProperty("--arrow-x", `${nockOffset.x}px`);
-    scene.style.setProperty("--arrow-y", `${nockOffset.y}px`);
-    scene.style.setProperty("--arrow-angle", `${direction.angle}deg`);
-    scene.style.setProperty("--bow-tilt", `${Math.max(-10, Math.min(10, direction.angle + 45))}deg`);
+    scene.style.setProperty(
+      "--arrow-x",
+      `${nockOffset.x}px`,
+    );
+
+    scene.style.setProperty(
+      "--arrow-y",
+      `${nockOffset.y}px`,
+    );
+
+    scene.style.setProperty(
+      "--arrow-angle",
+      `${direction.angle}deg`,
+    );
+
+    /*
+     * IMPORTANT:
+     * The bow itself must NEVER rotate with the arrow.
+     */
+    scene.style.setProperty("--bow-tilt", "0deg");
   }
 
-  function getDistanceFeedback(distance, targetSize, hitRadius) {
-    if (distance <= hitRadius + targetSize * 0.15) {
-      return { category: "very-close", message: "Almost… ❤️" };
+  function getDistanceFeedback(distance, targetRegion) {
+    const normalizedX = distance.x / targetRegion.radiusX;
+    const normalizedY = distance.y / targetRegion.radiusY;
+
+    const normalizedDistance = Math.sqrt(
+      normalizedX * normalizedX +
+      normalizedY * normalizedY,
+    );
+
+    if (normalizedDistance <= 0.35) {
+      return {
+        category: "very-close",
+        message: "Right there… ❤️",
+      };
     }
 
-    if (distance <= targetSize * 0.75) {
-      return { category: "close", message: "So close… ❤️" };
+    if (normalizedDistance <= 0.75) {
+      return {
+        category: "close",
+        message: "So close… ❤️",
+      };
     }
 
-    if (distance <= targetSize * 1.45) {
-      return { category: "medium", message: "You’re getting close…" };
+    if (normalizedDistance <= 1.5) {
+      return {
+        category: "medium",
+        message: "Getting closer…",
+      };
     }
 
-    if (distance <= targetSize * 2.5) {
-      return { category: "far", message: "Getting closer…" };
+    if (normalizedDistance <= 2.5) {
+      return {
+        category: "far",
+        message: "A little farther…",
+      };
     }
 
-    return { category: "very-far", message: "Too far… keep aiming ❤️" };
+   
   }
 
   function updateDistanceFeedback() {
     const origin = getBowOrigin();
-    const tip = getArrowTip({ x: origin.x + pull.x, y: origin.y + pull.y });
-    const targetPoint = getTargetPoint();
-    const hitRadius = getHitRadius(targetPoint.size);
-    const distance = Math.hypot(tip.x - targetPoint.x, tip.y - targetPoint.y);
-    const nextFeedback = getDistanceFeedback(distance, targetPoint.size, hitRadius);
+
+    const nockPosition = {
+      x: origin.x + pull.x,
+      y: origin.y + pull.y,
+    };
+
+    const tip = getArrowTip(nockPosition);
+    const region = getHeartHitRegion();
+
+    const distance = {
+      x: tip.x - region.centerX,
+      y: tip.y - region.centerY,
+    };
+
+    const nextFeedback = getDistanceFeedback(
+      Math.hypot(distance.x, distance.y),
+      region,
+    );
 
     if (nextFeedback.category !== feedbackCategory) {
       feedback.textContent = nextFeedback.message;
@@ -137,27 +243,66 @@ function createBowArrowController(scene) {
 
   function updateAim(pointer) {
     const origin = getBowOrigin();
+
     const rawPull = {
       x: pointer.x - origin.x,
       y: pointer.y - origin.y,
     };
-    const distance = Math.hypot(rawPull.x, rawPull.y);
-    const constrainedDistance = Math.min(distance, MAX_PULL_DISTANCE);
-    const scale = distance > 0 ? constrainedDistance / distance : 0;
+
+    const distance = Math.hypot(
+      rawPull.x,
+      rawPull.y,
+    );
+
+    const constrainedDistance = Math.min(
+      distance,
+      MAX_PULL_DISTANCE,
+    );
+
+    const scale =
+      distance > 0
+        ? constrainedDistance / distance
+        : 0;
 
     pull = {
       x: rawPull.x * scale,
       y: rawPull.y * scale,
-      strength: constrainedDistance / MAX_PULL_DISTANCE,
+      strength:
+        constrainedDistance /
+        MAX_PULL_DISTANCE,
     };
 
-    const launchVector = { x: -pull.x, y: -pull.y };
-    const launchDistance = Math.hypot(launchVector.x, launchVector.y) || 1;
+    /*
+     * Arrow flies in the exact opposite direction
+     * of the pull.
+     */
+    const launchVector = {
+      x: -pull.x,
+      y: -pull.y,
+    };
+
+    const launchDistance =
+      Math.hypot(
+        launchVector.x,
+        launchVector.y,
+      ) || 1;
 
     aim = {
-      x: launchVector.x / launchDistance,
-      y: launchVector.y / launchDistance,
-      angle: (Math.atan2(launchVector.y, launchVector.x) * 180) / Math.PI,
+      x:
+        launchVector.x /
+        launchDistance,
+
+      y:
+        launchVector.y /
+        launchDistance,
+
+      angle:
+        (Math.atan2(
+          launchVector.y,
+          launchVector.x,
+        ) *
+          180) /
+        Math.PI,
     };
 
     updateString();
@@ -167,74 +312,154 @@ function createBowArrowController(scene) {
 
   function resetVisuals() {
     const origin = getBowOrigin();
-    const targetPoint = getTargetPoint();
-    const directionX = targetPoint.x - origin.x;
-    const directionY = targetPoint.y - origin.y;
-    const distance = Math.hypot(directionX, directionY) || 1;
+    const region = getHeartHitRegion();
 
-    pull = { x: 0, y: 0, strength: 0 };
+    const directionX =
+      region.centerX - origin.x;
+
+    const directionY =
+      region.centerY - origin.y;
+
+    const distance = Math.hypot(
+      directionX,
+      directionY,
+    ) || 1;
+
+    pull = {
+      x: 0,
+      y: 0,
+      strength: 0,
+    };
+
     aim = {
       x: directionX / distance,
       y: directionY / distance,
-      angle: (Math.atan2(directionY, directionX) * 180) / Math.PI,
+      angle:
+        (Math.atan2(
+          directionY,
+          directionX,
+        ) *
+          180) /
+        Math.PI,
     };
+
     feedbackCategory = null;
+    feedback.classList.remove("feedback--hit");
     feedback.textContent = "";
+
+    updateArrowNockPosition();
     updateString();
     updateVisuals();
   }
 
-  function getHitRadius(targetSize) {
-    return Math.max(12, Math.min(20, targetSize * 0.14));
+  function isPointInsideHeart(tip) {
+    const region = getHeartHitRegion();
+
+    const normalizedX =
+      (tip.x - region.centerX) /
+      region.radiusX;
+
+    const normalizedY =
+      (tip.y - region.centerY) /
+      region.radiusY;
+
+    /*
+     * Ellipse hit area.
+     * Wings are outside this region and therefore don't count.
+     */
+    return (
+      normalizedX * normalizedX +
+        normalizedY * normalizedY <=
+      1
+    );
   }
 
   function endWithMiss() {
     setState(INTERACTION_STATES.MISS);
+  feedback.classList.remove("feedback--hit");
     feedbackCategory = null;
-    feedback.textContent = "A little off—try again.";
+    feedback.textContent =
+      "A little off — try again.";
+
     resetTimer = window.setTimeout(() => {
       setState(INTERACTION_STATES.RESETTING);
+
       resetVisuals();
+
       setState(INTERACTION_STATES.IDLE);
     }, 650);
   }
 
   function endWithHit() {
     setState(INTERACTION_STATES.HIT);
-    feedback.textContent = "";
-    target.classList.add("heart-target--impact");
-    window.setTimeout(() => target.classList.remove("heart-target--impact"), 250);
-  }
+  feedback.classList.add("feedback--hit");
+  feedback.textContent = "Bullseye! 💘 You just hit my heart!";
 
-  function arrowTipHitTarget(tip) {
-    const targetPoint = getTargetPoint();
-    const hitRadius = getHitRadius(targetPoint.size);
+    target.classList.add(
+      "heart-target--impact",
+    );
 
-    return Math.hypot(tip.x - targetPoint.x, tip.y - targetPoint.y) <= hitRadius;
+    window.setTimeout(() => {
+      target.classList.remove(
+        "heart-target--impact",
+      );
+    }, 250);
   }
 
   function launchArrow() {
-    if (pull.strength < MIN_LAUNCH_STRENGTH) {
-      setState(INTERACTION_STATES.RESETTING);
+    if (
+      pull.strength <
+      MIN_LAUNCH_STRENGTH
+    ) {
+      setState(
+        INTERACTION_STATES.RESETTING,
+      );
+
       resetVisuals();
-      setState(INTERACTION_STATES.IDLE);
+
+      setState(
+        INTERACTION_STATES.IDLE,
+      );
+
       return;
     }
 
-    setState(INTERACTION_STATES.FLYING);
+    setState(
+      INTERACTION_STATES.FLYING,
+    );
+
     feedback.textContent = "";
+
     const origin = getBowOrigin();
-    const nockPosition = { x: origin.x + pull.x, y: origin.y + pull.y };
-    const tipPosition = getArrowTip(nockPosition);
-    const velocity = {
-      x: aim.x * (760 + pull.strength * 840),
-      y: aim.y * (760 + pull.strength * 840),
+
+    const nockPosition = {
+      x: origin.x + pull.x,
+      y: origin.y + pull.y,
     };
-    const sceneBounds = scene.getBoundingClientRect();
+
+    let currentTip = getArrowTip(
+      nockPosition,
+      aim,
+    );
+
+    const speed =
+      760 + pull.strength * 840;
+
+    const velocity = {
+      x: aim.x * speed,
+      y: aim.y * speed,
+    };
+
+    const sceneBounds =
+      scene.getBoundingClientRect();
+
     let previousTime = null;
 
     function fly(timestamp) {
-      if (state !== INTERACTION_STATES.FLYING) {
+      if (
+        state !==
+        INTERACTION_STATES.FLYING
+      ) {
         return;
       }
 
@@ -242,129 +467,316 @@ function createBowArrowController(scene) {
         previousTime = timestamp;
       }
 
-      const delta = Math.min((timestamp - previousTime) / 1000, 0.032);
+      const delta = Math.min(
+        (timestamp - previousTime) /
+          1000,
+        0.032,
+      );
+
       previousTime = timestamp;
-      velocity.y += GRAVITY * delta;
-      tipPosition.x += velocity.x * delta;
-      tipPosition.y += velocity.y * delta;
-      const flightAngle = (Math.atan2(velocity.y, velocity.x) * 180) / Math.PI;
+
+      /*
+       * No gravity here.
+       *
+       * For this romantic aiming interaction,
+       * the arrow should follow the player's chosen
+       * line exactly. Gravity was causing the arrow to
+       * pass below the heart even when aimed correctly.
+       */
+      const previousTip = {
+        x: currentTip.x,
+        y: currentTip.y,
+      };
+
+      currentTip.x +=
+        velocity.x * delta;
+
+      currentTip.y +=
+        velocity.y * delta;
+
+      const flightAngle =
+        (Math.atan2(
+          velocity.y,
+          velocity.x,
+        ) *
+          180) /
+        Math.PI;
+
       const direction = {
-        x: Math.cos((flightAngle * Math.PI) / 180),
-        y: Math.sin((flightAngle * Math.PI) / 180),
+        x: Math.cos(
+          (flightAngle * Math.PI) /
+            180,
+        ),
+
+        y: Math.sin(
+          (flightAngle * Math.PI) /
+            180,
+        ),
+
         angle: flightAngle,
       };
-      const tipOffset = getArrowTipOffset();
+
+      const tipOffset =
+        getArrowTipOffset();
+
       const flightNock = {
-        x: tipPosition.x - direction.x * tipOffset,
-        y: tipPosition.y - direction.y * tipOffset,
+        x:
+          currentTip.x -
+          direction.x *
+            tipOffset,
+
+        y:
+          currentTip.y -
+          direction.y *
+            tipOffset,
       };
 
       updateVisuals(
         {
-          x: flightNock.x - origin.x,
-          y: flightNock.y - origin.y,
+          x:
+            flightNock.x -
+            origin.x,
+
+          y:
+            flightNock.y -
+            origin.y,
         },
         direction,
       );
 
-      if (arrowTipHitTarget(tipPosition)) {
+      /*
+       * Check the whole movement segment,
+       * not just the final frame position.
+       * This prevents the arrow from visually jumping
+       * through the heart between animation frames.
+       */
+      if (
+        segmentHitsHeart(
+          previousTip,
+          currentTip,
+        )
+      ) {
         animationFrame = null;
+
         endWithHit();
+
         return;
       }
 
       const outsideStage =
-        tipPosition.x < -100 ||
-        tipPosition.x > sceneBounds.width + 100 ||
-        tipPosition.y < -100 ||
-        tipPosition.y > sceneBounds.height + 100;
+        currentTip.x < -100 ||
+        currentTip.x >
+          sceneBounds.width + 100 ||
+        currentTip.y < -100 ||
+        currentTip.y >
+          sceneBounds.height + 100;
 
       if (outsideStage) {
         animationFrame = null;
+
         endWithMiss();
+
         return;
       }
 
-      animationFrame = window.requestAnimationFrame(fly);
+      animationFrame =
+        window.requestAnimationFrame(
+          fly,
+        );
     }
 
-    animationFrame = window.requestAnimationFrame(fly);
+    animationFrame =
+      window.requestAnimationFrame(
+        fly,
+      );
+  }
+
+  function segmentHitsHeart(
+    start,
+    end,
+  ) {
+    const region =
+      getHeartHitRegion();
+
+    const steps = 8;
+
+    for (
+      let index = 0;
+      index <= steps;
+      index += 1
+    ) {
+      const progress =
+        index / steps;
+
+      const point = {
+        x:
+          start.x +
+          (end.x - start.x) *
+            progress,
+
+        y:
+          start.y +
+          (end.y - start.y) *
+            progress,
+      };
+
+      if (
+        isPointInsideHeart(point)
+      ) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   function handlePointerDown(event) {
-    if (state !== INTERACTION_STATES.IDLE) {
+    if (
+      state !==
+      INTERACTION_STATES.IDLE
+    ) {
       return;
     }
 
     event.preventDefault();
-    arrow.setPointerCapture(event.pointerId);
-    setState(INTERACTION_STATES.DRAGGING);
+
+    arrow.setPointerCapture(
+      event.pointerId,
+    );
+
+    setState(
+      INTERACTION_STATES.DRAGGING,
+    );
   }
 
   function handlePointerMove(event) {
-    if (state !== INTERACTION_STATES.DRAGGING) {
+    if (
+      state !==
+      INTERACTION_STATES.DRAGGING
+    ) {
       return;
     }
 
     event.preventDefault();
-    updateAim(getPointInScene(event));
+
+    updateAim(
+      getPointInScene(event),
+    );
   }
 
   function releasePointer(event) {
-    if (arrow.hasPointerCapture(event.pointerId)) {
-      arrow.releasePointerCapture(event.pointerId);
+    if (
+      arrow.hasPointerCapture(
+        event.pointerId,
+      )
+    ) {
+      arrow.releasePointerCapture(
+        event.pointerId,
+      );
     }
   }
 
   function handlePointerUp(event) {
-    if (state !== INTERACTION_STATES.DRAGGING) {
+    if (
+      state !==
+      INTERACTION_STATES.DRAGGING
+    ) {
       return;
     }
 
     releasePointer(event);
+
     launchArrow();
   }
 
   function handlePointerCancel(event) {
-    if (state !== INTERACTION_STATES.DRAGGING) {
+    if (
+      state !==
+      INTERACTION_STATES.DRAGGING
+    ) {
       return;
     }
 
     releasePointer(event);
-    setState(INTERACTION_STATES.RESETTING);
+
+    setState(
+      INTERACTION_STATES.RESETTING,
+    );
+
     resetVisuals();
-    setState(INTERACTION_STATES.IDLE);
+
+    setState(
+      INTERACTION_STATES.IDLE,
+    );
   }
 
   function handleViewportChange() {
-    if (state === INTERACTION_STATES.IDLE) {
+    if (
+      state ===
+      INTERACTION_STATES.IDLE
+    ) {
       resetVisuals();
     }
   }
 
   function initialize() {
-    arrow.style.setProperty("--arrow-nock-position", `${nockRatio * 100}%`);
-    arrow.addEventListener("pointerdown", handlePointerDown);
-    arrow.addEventListener("pointermove", handlePointerMove);
-    arrow.addEventListener("pointerup", handlePointerUp);
-    arrow.addEventListener("pointercancel", handlePointerCancel);
-    window.addEventListener("resize", handleViewportChange);
-    window.addEventListener("orientationchange", handleViewportChange);
-    setState(INTERACTION_STATES.IDLE);
+    updateArrowNockPosition();
+
+    arrow.addEventListener(
+      "pointerdown",
+      handlePointerDown,
+    );
+
+    arrow.addEventListener(
+      "pointermove",
+      handlePointerMove,
+    );
+
+    arrow.addEventListener(
+      "pointerup",
+      handlePointerUp,
+    );
+
+    arrow.addEventListener(
+      "pointercancel",
+      handlePointerCancel,
+    );
+
+    window.addEventListener(
+      "resize",
+      handleViewportChange,
+    );
+
+    window.addEventListener(
+      "orientationchange",
+      handleViewportChange,
+    );
+
+    setState(
+      INTERACTION_STATES.IDLE,
+    );
+
     resetVisuals();
   }
 
   return Object.freeze({
     initialize,
+
     getState: () => state,
+
     reset: resetVisuals,
+
     destroy: () => {
       if (animationFrame) {
-        window.cancelAnimationFrame(animationFrame);
+        window.cancelAnimationFrame(
+          animationFrame,
+        );
       }
 
       if (resetTimer) {
-        window.clearTimeout(resetTimer);
+        window.clearTimeout(
+          resetTimer,
+        );
       }
     },
   });
