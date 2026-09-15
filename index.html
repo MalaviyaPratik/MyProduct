@@ -100,8 +100,25 @@
             <span class="scene-two-atmosphere__particle scene-two-atmosphere__particle--two"></span>
             <span class="scene-two-atmosphere__particle scene-two-atmosphere__particle--three"></span>
           </div>
-          <div class="scene-two-focal-zone" aria-hidden="true"></div>
-          <div class="scene-two-character-zone" aria-hidden="true"></div>
+          <div class="scene-two-focal-zone">
+            <figure class="scene-two-envelope" data-state="idle">
+              <img src="assets/illustrations/scene-two-envelope.svg" alt="">
+              <button class="envelope-heart-seal" type="button" data-heart-seal aria-label="Open my heart">
+                <span class="envelope-heart-seal__visual">
+                  <img src="assets/icons/envelope-heart-seal.svg" alt="">
+                </span>
+              </button>
+            </figure>
+            <div class="envelope-heart-hint" data-envelope-heart-hint data-state="idle" aria-hidden="true">
+              Open my heart to see what I feel.
+            </div>
+          </div>
+          <p class="scene-two-text" data-scene-two-text></p>
+          <div class="scene-two-character-zone" aria-hidden="true">
+            <figure class="scene-two-character">
+              <img src="assets/illustrations/scene-two-companion-man.svg" alt="">
+            </figure>
+          </div>
         </section>
         <div class="heart-transition" data-heart-transition data-state="idle" aria-hidden="true">
           <span class="heart-color-wave" data-heart-wave></span>

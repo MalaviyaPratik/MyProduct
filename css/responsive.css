@@ -23,6 +23,15 @@
     inset-inline-start: 15%;
     inline-size: min(32vw, 22rem);
   }
+
+  .scene-two-character {
+    inline-size: min(100%, 18rem);
+  }
+
+  .scene-two-text {
+    inset-inline-start: 13%;
+    inline-size: min(38vw, 31rem);
+  }
 }
 
 @media (min-width: 75rem) {
