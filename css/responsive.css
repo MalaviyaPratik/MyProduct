@@ -4,9 +4,7 @@
  */
 
 @media (min-width: 48rem) {
-  .experience-stage {
-    inline-size: min(100%, 90rem);
-  }
+ 
 
   .heart-target {
     inset: 18% 18% auto auto;
@@ -14,6 +12,16 @@
 
   .bow-rig {
     inset: auto auto 10% 20%;
+  }
+
+  .scene-two-focal-zone {
+    inset-inline-end: 17%;
+    inline-size: min(48vw, 36rem);
+  }
+
+  .scene-two-character-zone {
+    inset-inline-start: 15%;
+    inline-size: min(32vw, 22rem);
   }
 }
 
@@ -25,4 +33,25 @@
   .bow-rig {
     inset-inline-start: 24%;
   }
+
+  .scene-two-focal-zone {
+    inset-inline-end: 22%;
+  }
+}
+
+@media(min-width:992px){
+  .bow-arrow-instruction{
+    font-size: clamp(2rem, 6vw, 3rem);
+    font-weight: 600;
+    top: 42px;
+  }.bow-arrow-feedback{
+    
+    top: 115px;
+    font-size: 19px;
+    font-weight: 700;
+  }
+  .bow-arrow-feedback.feedback--hit {
+    top: 55px;
+    font-size: 28px;
+}
 }

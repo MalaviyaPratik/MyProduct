@@ -194,9 +194,71 @@ a {
   position: relative;
   block-size: 100%;
   inline-size: 100%;
-  max-inline-size: 90rem;
   margin-inline: auto;
   overflow: hidden;
+}
+
+.heart-transition {
+  --impact-x: 50%;
+  --impact-y: 50%;
+  --transition-impact-duration: 320ms;
+  --transition-wave-delay: 170ms;
+  --transition-wave-duration: 1120ms;
+  --transition-wave-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.heart-impact-marker {
+  z-index: -1;
+  position: absolute;
+  inset: var(--impact-y) auto auto var(--impact-x);
+  inline-size: clamp(2.25rem, 8vw, 3.5rem);
+  aspect-ratio: 1;
+  border: 1px solid var(--color-primary-light);
+  border-radius: var(--radius-pill);
+  background: radial-gradient(circle, var(--color-atmosphere-soft), transparent 68%);
+  box-shadow: 0 0 1.25rem var(--color-atmosphere-glow);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.7);
+}
+
+.heart-color-wave {
+  --wave-x: 50%;
+  --wave-y: 50%;
+  --wave-scale: 1;
+  position: absolute;
+  z-index: 0;
+  inset: var(--wave-y) auto auto var(--wave-x);
+  inline-size: 10rem;
+  block-size: 10rem;
+  border-radius: var(--radius-pill);
+  background: radial-gradient(
+    circle,
+    var(--color-background-soft) 0 73%,
+    var(--color-primary) 83%,
+    var(--color-primary-light) 90%,
+    var(--color-background-soft) 96%,
+    transparent 100%
+  );
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0.01);
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
+.heart-transition[data-state="completed"] .heart-impact-marker {
+  opacity: 0.35;
+  transform: translate(-50%, -50%) scale(1.16);
+}
+
+.heart-color-wave[data-state="completed"] {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(var(--wave-scale));
 }
 
 .scene {
@@ -413,6 +475,85 @@ position: absolute;
 
 .scene--bow-arrow[data-state="hit"] .bow-arrow-instruction {
   opacity: 0;
+}
+
+.scene--letter-environment {
+  isolation: isolate;
+  background-color: var(--color-background-soft);
+  contain: layout paint;
+}
+
+.scene-two-atmosphere,
+.scene-two-atmosphere__light,
+.scene-two-atmosphere__veil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.scene-two-atmosphere {
+  z-index: -1;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 58% 42% at 69% 26%, rgb(238 203 215 / 14%), transparent 72%),
+    radial-gradient(ellipse 48% 36% at 18% 78%, rgb(141 61 97 / 20%), transparent 74%),
+    var(--color-background-soft);
+}
+
+.scene-two-atmosphere__light {
+  inset: -18%;
+  background: radial-gradient(ellipse at center, rgb(255 248 239 / 8%), transparent 62%);
+  opacity: 0.9;
+}
+
+.scene-two-atmosphere__veil {
+  background: radial-gradient(ellipse at center, transparent 34%, rgb(37 22 32 / 38%) 100%);
+}
+
+.scene-two-focal-zone {
+  position: absolute;
+  z-index: 1;
+  inset: clamp(6rem, 15svh, 10rem) 12% auto auto;
+  inline-size: min(62vw, 33rem);
+  block-size: min(42svh, 25rem);
+  border-radius: 48% 52% 50% 50%;
+  background: radial-gradient(ellipse at center, rgb(255 248 239 / 5%), transparent 70%);
+  pointer-events: none;
+}
+
+.scene-two-character-zone {
+  position: absolute;
+  z-index: 1;
+  inset: auto auto max(8%, env(safe-area-inset-bottom)) 8%;
+  inline-size: min(42vw, 20rem);
+  block-size: min(34svh, 19rem);
+  pointer-events: none;
+}
+
+.scene-two-atmosphere__particle {
+  position: absolute;
+  inline-size: 0.2rem;
+  block-size: 0.2rem;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-surface);
+  box-shadow: 0 0 0.8rem rgb(255 248 239 / 46%);
+  opacity: 0.34;
+}
+
+.scene-two-atmosphere__particle--one {
+  inset: 20% auto auto 18%;
+}
+
+.scene-two-atmosphere__particle--two {
+  inset: 53% 13% auto auto;
+  inline-size: 0.15rem;
+  block-size: 0.15rem;
+}
+
+.scene-two-atmosphere__particle--three {
+  inset: auto 32% 17% auto;
+  inline-size: 0.14rem;
+  block-size: 0.14rem;
 }
 
 .btn-love {

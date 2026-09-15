@@ -29,7 +29,14 @@ function createBowArrowController(scene) {
   const upperString = scene.querySelector("[data-string-upper]");
   const lowerString = scene.querySelector("[data-string-lower]");
 
-  if (!arrow || !bowRig || !target || !feedback || !upperString || !lowerString) {
+  if (
+    !arrow ||
+    !bowRig ||
+    !target ||
+    !feedback ||
+    !upperString ||
+    !lowerString
+  ) {
     return null;
   }
 
@@ -43,6 +50,17 @@ function createBowArrowController(scene) {
   let animationFrame = null;
   let resetTimer = null;
 
+  /*
+   * Stores the successful hit point.
+   *
+   * The important part is heartXRatio / heartYRatio.
+   * These values describe where the arrow hit relative
+   * to the actual heart body, not relative to the viewport.
+   *
+   * This makes the hit position responsive-safe.
+   */
+  let lastHitPoint = null;
+
   function getPointInScene(event) {
     const bounds = scene.getBoundingClientRect();
 
@@ -53,7 +71,7 @@ function createBowArrowController(scene) {
   }
 
   /*
-   * The bow is now a horizontal SVG.
+   * The bow is a horizontal SVG.
    * Its actual string/nock center is the visual center of the bow.
    */
   function getBowOrigin() {
@@ -65,7 +83,7 @@ function createBowArrowController(scene) {
 
   /*
    * Only the central heart body counts as the target.
-   * The decorative wings are intentionally excluded.
+   * Decorative wings are intentionally excluded.
    */
   function getHeartHitRegion() {
     const targetBounds = target.getBoundingClientRect();
@@ -86,7 +104,7 @@ function createBowArrowController(scene) {
 
     /*
      * Central heart body only.
-     * These proportions deliberately ignore the wings.
+     * Wings remain outside this ellipse.
      */
     const radiusX = width * 0.20;
     const radiusY = height * 0.38;
@@ -124,7 +142,6 @@ function createBowArrowController(scene) {
 
   /*
    * String center always follows the actual arrow nock.
-   * No artificial 0.18 multiplier anymore.
    */
   function updateString() {
     const centerX = 148 + pull.x;
@@ -138,11 +155,6 @@ function createBowArrowController(scene) {
   }
 
   function updateArrowNockPosition() {
-    /*
-     * The arrow element's left edge is positioned around the bow center.
-     * Shift it left by its own nock offset so the actual nock sits exactly
-     * on the bow/string center.
-     */
     const nockOffset = arrow.offsetWidth * nockRatio;
 
     arrow.style.setProperty(
@@ -168,19 +180,21 @@ function createBowArrowController(scene) {
     );
 
     /*
-     * IMPORTANT:
      * The bow itself must NEVER rotate with the arrow.
      */
     scene.style.setProperty("--bow-tilt", "0deg");
   }
 
   function getDistanceFeedback(distance, targetRegion) {
-    const normalizedX = distance.x / targetRegion.radiusX;
-    const normalizedY = distance.y / targetRegion.radiusY;
+    const normalizedX =
+      distance.x / targetRegion.radiusX;
+
+    const normalizedY =
+      distance.y / targetRegion.radiusY;
 
     const normalizedDistance = Math.sqrt(
       normalizedX * normalizedX +
-      normalizedY * normalizedY,
+        normalizedY * normalizedY,
     );
 
     if (normalizedDistance <= 0.35) {
@@ -211,7 +225,10 @@ function createBowArrowController(scene) {
       };
     }
 
-   
+    return {
+      category: "very-far",
+      message: "Too far… keep aiming ❤️",
+    };
   }
 
   function updateDistanceFeedback() {
@@ -320,10 +337,11 @@ function createBowArrowController(scene) {
     const directionY =
       region.centerY - origin.y;
 
-    const distance = Math.hypot(
-      directionX,
-      directionY,
-    ) || 1;
+    const distance =
+      Math.hypot(
+        directionX,
+        directionY,
+      ) || 1;
 
     pull = {
       x: 0,
@@ -343,8 +361,13 @@ function createBowArrowController(scene) {
         Math.PI,
     };
 
+    lastHitPoint = null;
     feedbackCategory = null;
-    feedback.classList.remove("feedback--hit");
+
+    feedback.classList.remove(
+      "feedback--hit",
+    );
+
     feedback.textContent = "";
 
     updateArrowNockPosition();
@@ -365,7 +388,7 @@ function createBowArrowController(scene) {
 
     /*
      * Ellipse hit area.
-     * Wings are outside this region and therefore don't count.
+     * Wings are outside this region.
      */
     return (
       normalizedX * normalizedX +
@@ -376,24 +399,87 @@ function createBowArrowController(scene) {
 
   function endWithMiss() {
     setState(INTERACTION_STATES.MISS);
-  feedback.classList.remove("feedback--hit");
+
+    feedback.classList.remove(
+      "feedback--hit",
+    );
+
     feedbackCategory = null;
+
     feedback.textContent =
       "A little off — try again.";
 
     resetTimer = window.setTimeout(() => {
-      setState(INTERACTION_STATES.RESETTING);
+      setState(
+        INTERACTION_STATES.RESETTING,
+      );
 
       resetVisuals();
 
-      setState(INTERACTION_STATES.IDLE);
+      setState(
+        INTERACTION_STATES.IDLE,
+      );
     }, 650);
   }
 
-  function endWithHit() {
+  function endWithHit(impactPoint) {
+    /*
+     * Capture the impact relative to the current heart body.
+     *
+     * This is the key to responsive resize support.
+     */
+    const region = getHeartHitRegion();
+
+    const heartXRatio =
+      region.radiusX
+        ? (impactPoint.x - region.centerX) /
+          region.radiusX
+        : 0;
+
+    const heartYRatio =
+      region.radiusY
+        ? (impactPoint.y - region.centerY) /
+          region.radiusY
+        : 0;
+
+    lastHitPoint = Object.freeze({
+      x: impactPoint.x,
+      y: impactPoint.y,
+      heartXRatio,
+      heartYRatio,
+    });
+
     setState(INTERACTION_STATES.HIT);
-  feedback.classList.add("feedback--hit");
-  feedback.textContent = "Bullseye! 💘 You just hit my heart!";
+
+    feedback.classList.add(
+      "feedback--hit",
+    );
+
+    feedback.textContent =
+      "Bullseye! 💘 You just hit my heart!";
+
+    scene.dispatchEvent(
+      new CustomEvent("bow-arrow:hit", {
+        bubbles: true,
+        detail: {
+          coordinateSpace: "scene",
+
+          impactPoint: Object.freeze({
+            x: impactPoint.x,
+            y: impactPoint.y,
+          }),
+
+          /*
+           * Future transition modules can use these
+           * responsive-safe coordinates.
+           */
+          heartImpact: Object.freeze({
+            xRatio: heartXRatio,
+            yRatio: heartYRatio,
+          }),
+        },
+      }),
+    );
 
     target.classList.add(
       "heart-target--impact",
@@ -475,14 +561,6 @@ function createBowArrowController(scene) {
 
       previousTime = timestamp;
 
-      /*
-       * No gravity here.
-       *
-       * For this romantic aiming interaction,
-       * the arrow should follow the player's chosen
-       * line exactly. Gravity was causing the arrow to
-       * pass below the heart even when aimed correctly.
-       */
       const previousTip = {
         x: currentTip.x,
         y: currentTip.y,
@@ -545,10 +623,7 @@ function createBowArrowController(scene) {
       );
 
       /*
-       * Check the whole movement segment,
-       * not just the final frame position.
-       * This prevents the arrow from visually jumping
-       * through the heart between animation frames.
+       * Check the complete movement segment.
        */
       if (
         segmentHitsHeart(
@@ -558,7 +633,7 @@ function createBowArrowController(scene) {
       ) {
         animationFrame = null;
 
-        endWithHit();
+        endWithHit(currentTip);
 
         return;
       }
@@ -711,11 +786,130 @@ function createBowArrowController(scene) {
   }
 
   function handleViewportChange() {
+    /*
+     * Normal idle state:
+     * recalculate the default arrow/bow alignment
+     * against the new responsive layout.
+     */
     if (
       state ===
       INTERACTION_STATES.IDLE
     ) {
       resetVisuals();
+      return;
+    }
+
+    /*
+     * While dragging, do not reset the user's pull.
+     * The next pointer movement will use the new layout.
+     */
+    if (
+      state ===
+      INTERACTION_STATES.DRAGGING
+    ) {
+      updateArrowNockPosition();
+      updateString();
+      return;
+    }
+
+    /*
+     * Do not interfere with an arrow already flying.
+     */
+    if (
+      state ===
+      INTERACTION_STATES.FLYING
+    ) {
+      updateArrowNockPosition();
+      return;
+    }
+
+    /*
+     * Successful hit:
+     *
+     * Recalculate the current heart geometry first,
+     * then reconstruct the same relative impact point.
+     *
+     * This is what makes:
+     *
+     * Mobile → Desktop
+     * Desktop → Mobile
+     *
+     * responsive-safe.
+     */
+    if (
+      state ===
+        INTERACTION_STATES.HIT &&
+      lastHitPoint
+    ) {
+      const region =
+        getHeartHitRegion();
+
+      if (
+        !region.radiusX ||
+        !region.radiusY
+      ) {
+        return;
+      }
+
+      const nextImpactPoint = {
+        x:
+          region.centerX +
+          lastHitPoint.heartXRatio *
+            region.radiusX,
+
+        y:
+          region.centerY +
+          lastHitPoint.heartYRatio *
+            region.radiusY,
+      };
+
+      /*
+       * Keep the stored point synchronized with
+       * the current responsive geometry.
+       */
+      lastHitPoint = Object.freeze({
+        ...lastHitPoint,
+        x: nextImpactPoint.x,
+        y: nextImpactPoint.y,
+      });
+
+      const origin = getBowOrigin();
+
+      const direction = {
+        x: aim.x,
+        y: aim.y,
+        angle: aim.angle,
+      };
+
+      const tipOffset =
+        getArrowTipOffset();
+
+      const nockPosition = {
+        x:
+          nextImpactPoint.x -
+          direction.x *
+            tipOffset,
+
+        y:
+          nextImpactPoint.y -
+          direction.y *
+            tipOffset,
+      };
+
+      updateArrowNockPosition();
+
+      updateVisuals(
+        {
+          x:
+            nockPosition.x -
+            origin.x,
+
+          y:
+            nockPosition.y -
+            origin.y,
+        },
+        direction,
+      );
     }
   }
 

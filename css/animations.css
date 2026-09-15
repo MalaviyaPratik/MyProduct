@@ -12,9 +12,132 @@
   animation: target-impact var(--duration-fast) var(--ease-emphasized);
 }
 
+.heart-transition[data-state="transitioning"] .heart-impact-marker {
+  animation: heart-impact-foundation var(--transition-impact-duration) var(--ease-emphasized) both;
+}
+
+.heart-color-wave[data-state="expanding"] {
+  animation: heart-color-wave-expand var(--transition-wave-duration) var(--transition-wave-ease) var(--transition-wave-delay) both;
+}
+
+.heart-burst-particle {
+  position: absolute;
+  z-index: 3;
+  inset: var(--particle-origin-y) auto auto var(--particle-origin-x);
+  inline-size: var(--particle-size);
+  block-size: var(--particle-size);
+  overflow: visible;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  will-change: transform, opacity;
+  animation: heart-burst-flight var(--particle-duration) var(--ease-emphasized) var(--particle-delay) both;
+}
+
+.heart-burst-particle path {
+  fill: var(--color-primary-light);
+}
+
+.heart-burst-particle--soft path {
+  fill: var(--color-surface);
+}
+
+.scene-two-atmosphere__light {
+  animation: scene-two-ambient-light 9s ease-in-out infinite alternate;
+}
+
+.scene-two-atmosphere__particle--one {
+  animation: scene-two-particle-drift 11s ease-in-out infinite alternate;
+}
+
+.scene-two-atmosphere__particle--two {
+  animation: scene-two-particle-drift 13s ease-in-out -3s infinite alternate;
+}
+
+.scene-two-atmosphere__particle--three {
+  animation: scene-two-particle-drift 10s ease-in-out -5s infinite alternate;
+}
+
 @keyframes target-impact {
   50% {
     transform: scale(1.08);
+  }
+}
+
+@keyframes heart-impact-foundation {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.7);
+  }
+
+  45% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  100% {
+    opacity: 0.35;
+    transform: translate(-50%, -50%) scale(1.16);
+  }
+}
+
+@keyframes heart-color-wave-expand {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.01);
+  }
+
+  12% {
+    opacity: 0.32;
+  }
+
+  54% {
+    opacity: 0.82;
+  }
+
+  100% {
+    opacity: 100;
+    transform: translate(-50%, -50%) scale(var(--wave-scale));
+  }
+}
+
+@keyframes heart-burst-flight {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.45) rotate(0deg);
+  }
+
+  18% {
+    opacity: 0.9;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(
+      calc(-50% + var(--particle-x)),
+      calc(-50% + var(--particle-y))
+    ) scale(0.8) rotate(var(--particle-rotation));
+  }
+}
+
+@keyframes scene-two-ambient-light {
+  from {
+    opacity: 0.72;
+    transform: translate3d(-1.5%, 1%, 0) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(1.5%, -1%, 0) scale(1.02);
+  }
+}
+
+@keyframes scene-two-particle-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(0.75rem, -1rem, 0);
   }
 }
 
@@ -25,5 +148,54 @@
 
   .heart-target--impact {
     animation: none;
+  }
+
+  .scene-two-atmosphere__light,
+  .scene-two-atmosphere__particle {
+    animation: none;
+  }
+
+  .heart-transition[data-state="transitioning"] .heart-impact-marker {
+    animation: none;
+    opacity: 0.55;
+    transform: translate(-50%, -50%);
+  }
+
+  .heart-color-wave[data-state="expanding"] {
+    animation: heart-color-wave-reduced 340ms var(--ease-standard) both;
+  }
+
+  .heart-burst-particle {
+    animation: heart-burst-reduced var(--particle-duration) var(--ease-standard) both;
+  }
+
+  @keyframes heart-burst-reduced {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.7);
+    }
+
+    20%,
+    75% {
+      opacity: 0.7;
+      transform: translate(-50%, -50%) scale(0.9);
+    }
+
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.9);
+    }
+  }
+
+  @keyframes heart-color-wave-reduced {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(var(--wave-scale));
+    }
+
+    to {
+      opacity: 0.9;
+      transform: translate(-50%, -50%) scale(var(--wave-scale));
+    }
   }
 }
